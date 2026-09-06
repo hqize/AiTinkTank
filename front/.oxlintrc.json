@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "react", "oxc"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2021": true
+  },
+  "ignorePatterns": ["node_modules", "out", "dist"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": ["error", { "allowConstantExport": true }],
+    "typescript/ban-ts-comment": ["error", { "ts-ignore": "allow-with-description" }],
+    "typescript/explicit-function-return-type": [
+      "error",
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true,
+        "allowHigherOrderFunctions": true,
+        "allowIIFEs": true
+      }
+    ],
+    "typescript/no-empty-function": ["error", { "allow": ["arrowFunctions"] }],
+    "typescript/no-empty-object-type": ["error", { "allowInterfaces": "always" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unused-expressions": [
+      "error",
+      { "allowShortCircuit": true, "allowTaggedTemplates": true, "allowTernary": true }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.js", "**/*.mjs"],
+      "rules": { "typescript/explicit-function-return-type": "off" }
+    }
+  ]
+}
