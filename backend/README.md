@@ -33,3 +33,9 @@ flowchart LR
 ![image-20260906221000285](README.assets/image-20260906221000285.png)
 
 ### 1.1 node_entry.py入口节点实现与单元测试
+
+### 1.2 node_pdf_to_md.py 节点实现
+
+- MinerU:能够将**非结构化或弱结构化文档**（如PDF、Word、PPT、Excel、图片、网页URL等）解析为**机器可读的Markdown、JSON、LaTeX、HTML等格式**
+- 
+

@@ -32,6 +32,13 @@ class ImportConfig:
         default_factory=lambda: {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
     )
 
+    # ==================== MinerU 配置 ====================
+    mineru_api_token: str = field(
+        default_factory=lambda: os.getenv("MINERU_API_TOKEN", "")
+    )
+    mineru_base_url: str = field(
+        default_factory=lambda: os.getenv("MINERU_BASE_URL", "")
+    )
     # ==================== LLM 配置 ====================
     openai_api_base: str = field(
         default_factory=lambda: os.getenv("OPENAI_API_BASE", "")
