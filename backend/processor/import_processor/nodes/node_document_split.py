@@ -377,14 +377,18 @@ if __name__ == "__main__":
 
     _backend_dir = Path(__file__).resolve().parents[3]
 
-    md_path = str(_backend_dir/"out"/"hak180产品安全手册"/"hak180产品安全手册_new.md")
+    # 调试目标：指向 out/<文件标题>/<文件标题>_new.md 即可
+    md_path = str(
+        _backend_dir / "out" / "H3C LA2608室内无线网关 用户手册-6W100-整本手册"
+        / "H3C LA2608室内无线网关 用户手册-6W100-整本手册_new.md")
     with open(md_path, "r", encoding="utf-8") as f:
         md_content = f.read()
 
     init_state = {
         "md_path": md_path,
         "md_content": md_content,
-        "file_title": "hak180产品安全手册"
+        # file_title 由产物目录名推导，避免与 md_path 指向的文件不一致
+        "file_title": Path(md_path).parent.name,
     }
     # 执行文档切分节点
     node_document_split = NodeDocumentSplit()

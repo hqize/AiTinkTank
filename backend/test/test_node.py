@@ -40,6 +40,6 @@ if __name__ == "__main__":
     # 4. 调用 __call__ 方法 (LangGraph 或工作流引擎通常就是这样调用的)
     try:
         final_state = node(initial_state)
-        print("\n最终状态:", final_state)
+        node.logger.info(f"\n最终状态:%s",final_state)
     except ImportProcessError as e:
-        print("捕获到流程错误:", e)
+        logging.error("捕获到流程错误:", e)

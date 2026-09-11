@@ -434,7 +434,7 @@ if __name__ == "__main__":
     setup_logging()
 
     _backend_dir = Path(__file__).resolve().parents[3]
-    md_path = str(_backend_dir/"out"/"hak180产品安全手册"/"hak180产品安全手册.md")
+    md_path = str(_backend_dir/"out"/"H3C LA2608室内无线网关 用户手册-6W100-整本手册"/"H3C LA2608室内无线网关 用户手册-6W100-整本手册.md")
     with open(md_path, "r", encoding="utf-8") as f:
         md_content = f.read()
 

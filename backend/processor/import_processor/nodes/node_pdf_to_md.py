@@ -247,7 +247,7 @@ if __name__ == "__main__":
     _backend_dir = Path(__file__).resolve().parents[3]
 
     init_state = {
-        "pdf_path": str(_backend_dir / "doc" / "Aolynk CB304n Cable网桥 用户手册-5W100-整本手册.pdf"),
+        "pdf_path": str(_backend_dir / "doc" / "H3C LA2608室内无线网关 用户手册-6W100-整本手册.pdf"),
         "file_dir": str(_backend_dir / "out"),
     }
 
