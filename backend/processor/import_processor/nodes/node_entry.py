@@ -68,4 +68,4 @@ if __name__ == "__main__":
     node_entry = NodeEntry()
     result = node_entry(init_state)
     print(result)
-    logging.getLogger().info(result)
+    logging.getLogger(__name__).info(result)
