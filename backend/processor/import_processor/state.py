@@ -1,9 +1,9 @@
 # backend/processor/import_processor/state.py
 
 """
-导入流程状态类型定义
+    导入流程状态类型定义
 
-定义完整的状态结构和辅助函数
+    定义完整的状态结构和辅助函数
 """
 
 from typing import TypedDict, List
@@ -12,10 +12,10 @@ import copy
 
 class ImportGraphState(TypedDict):
     """
-    导入流程图状态
+        导入流程图状态
 
-    包含整个导入流程中传递的所有数据。
-    使用 total=False 表示所有字段都是可选的。
+        包含整个导入流程中传递的所有数据。
+        使用 total=False 表示所有字段都是可选的。
     """
 
     # ==================== 任务标识 ====================
@@ -68,7 +68,7 @@ GRAPH_DEFAULT_STATE: ImportGraphState = {
 
 def get_default_state() -> ImportGraphState:
     """
-    获取默认状态副本
-    :return: 状态副本（避免全局污染）
+        获取默认状态副本
+        :return: 状态副本（避免全局污染）
     """
     return copy.deepcopy(GRAPH_DEFAULT_STATE)
