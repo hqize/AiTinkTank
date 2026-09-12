@@ -413,4 +413,12 @@ if __name__ == "__main__":
     node_item_name_recognition = NodeItemNameRecognition()
     result = node_item_name_recognition(init_state)
 
+    # 将结果落盘，供下游节点调试使用（node_bge_embedding 的 __main__ 会读它）。
+    # 不要靠复制日志里的 JSON 手工生成：日志首行是「时间戳前缀 + {」，
+    # 复制时一旦漏掉首行，文件就会变成缺少 '{' 的非法 JSON。
+    state_path = Path(chunks_path).parent / "state.json"
+    with open(state_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    node_item_name_recognition.logger.info(f"state 已写入：{state_path}")
+
     node_item_name_recognition.logger.info(json.dumps(result, ensure_ascii=False, indent=4))
