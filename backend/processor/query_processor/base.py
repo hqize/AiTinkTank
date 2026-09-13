@@ -31,7 +31,7 @@ class NodeBase(ABC):
             return result
 
         except Exception as e:
-            logger.erro(f"{self.name} 执行失败: {e}")
+            logger.error(f"{self.name} 执行失败: {e}")
             # logger.exception(f"{self.name} 执行失败: {e}")
             raise
 
