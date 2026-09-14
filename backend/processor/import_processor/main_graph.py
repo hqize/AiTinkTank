@@ -20,7 +20,7 @@ class KBImportWorkflow:
 
     def __init__(self, config=None):
         """
-        初始化工作流
+            初始化工作流
         """
         self._compiled_graph = None
 
@@ -34,9 +34,9 @@ class KBImportWorkflow:
     @staticmethod
     def route_after_entry(state: ImportGraphState) -> str:
         """
-        入口节点后的条件路由函数
-        :param state: 当前状态
-        :return: 下一个节点名称
+            入口节点后的条件路由函数
+            :param state: 当前状态
+            :return: 下一个节点名称
         """
         if state.get("is_pdf_read_enabled"):
             return "node_pdf_to_md"
@@ -47,8 +47,8 @@ class KBImportWorkflow:
 
     def build_graph(self):
         """
-        创建图结构
-        :return: 编译后的图
+            创建图结构
+            :return: 编译后的图
         """
         # 1. 初始化LangGraph状态图
         graph = StateGraph(ImportGraphState)
@@ -89,10 +89,10 @@ class KBImportWorkflow:
 
     def run(self, state: ImportGraphState, stream: bool = False):
         """
-        统一执行入口，支持切换invoke/stream
-        :param state: 初始状态
-        :param stream: 是否流式输出
-        :return: 执行结果
+            统一执行入口，支持切换invoke/stream
+            :param state: 初始状态
+            :param stream: 是否流式输出
+            :return: 执行结果
         """
         # 打印图结构（仅调试用）
         self.graph.get_graph().print_ascii()

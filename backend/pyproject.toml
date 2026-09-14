@@ -21,6 +21,7 @@ dependencies = [
     "torch",
     "torchvision",
     "torchaudio",
+    "openai-agents>=0.22.2",
 ]
 
 # 根据自己设备选择版本 使用uv pip而不是uv add，因为pytorch不支持uv管理

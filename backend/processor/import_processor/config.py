@@ -1,9 +1,9 @@
 # backend/processor/import_processor/config.py
 
 """
-导入流程配置管理模块
+    导入流程配置管理模块
 
-集中管理所有配置项，支持环境变量覆盖
+    集中管理所有配置项，支持环境变量覆盖
 """
 
 from dataclasses import dataclass, field
