@@ -22,8 +22,12 @@ class NodeWebSearchMcp(NodeBase):
 
         query = state.get("rewritten_query", "")
         docs = []
-        # 如果没有查询内容，直接返回
-        if query:
+        # 联网搜索是「可选增益」分支：MCP 不可用/超时/URL 配错 都不应该中断整条查询链路，
+        # 否则一个外部依赖抖动就会让用户完全拿不到答案（本地知识库的结果也一起丢掉）。
+        if not query:
+            return {}
+
+        try:
             result = asyncio.run(self._mcp_call(query))
             text = self._extract_text(result)
             if text:
@@ -39,6 +43,8 @@ class NodeWebSearchMcp(NodeBase):
                     logger.warning(f"MCP 搜索返回文本未能解析出结果，原文前200字符: {text[:200]}")
             else:
                 logger.warning("MCP 搜索未返回任何文本内容")
+        except Exception as e:
+            logger.warning(f"MCP 联网搜索失败，本次查询跳过联网结果：{e}")
 
         if docs:
             return {"web_search_docs": docs}

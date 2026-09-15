@@ -20,6 +20,14 @@ RERANK_GAP_ABS: float = 0.5
 # 断崖阈值（相对，判断低分文档）
 RERANK_GAP_RATIO: float = 0.25
 
+# 绝对相关性下限：低于该分数的文档直接视为「与问题无关」丢弃。
+# 实测（本知识库 7 个切片，BGE-Reranker 归一化分数）：
+#   相关问题 top 分：0.61 ~ 0.99（"怎么保养烫金机" 0.96 / "使用注意事项" 0.99）
+#   无关问题 top 分：≤ 0.12（"你好" 0.019 / "帮我写一首诗" 0.0001 / "小米15…" 0.117）
+# 所以 0.3 这条线能把「没有可用资料」和「有资料」干净地分开。
+# 作用：让上层的"通用知识兜底"能被正确触发，而不是拿一堆无关切片硬编答案。
+RERANK_MIN_SCORE: float = 0.3
+
 class NodeRerank(NodeBase):
     """
         节点功能：使用 Cross-Encoder 模型对 RRF 后的结果进行精确打分重排。
@@ -117,13 +125,27 @@ class NodeRerank(NodeBase):
 
         except Exception as e:
             logger.error(f"Rerank 重排序失败: {str(e)}")
-            return [{**merged_multi_docs, "score": None}]
+            # 降级：不做精排，保持原顺序返回，并把 score 标记为 None
+            # 注意 merged_multi_docs 是列表，必须逐条展开（写成 {**merged_multi_docs} 会直接抛 TypeError）
+            return [{**doc, "score": None} for doc in (merged_multi_docs or [])]
 
 
     def _step_3_cliff_cutoff(self, ranked_docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """断崖检测截断：相邻得分差距超过阈值时截断。"""
         if not ranked_docs:
             return []
+
+        # 0. 先按绝对相关性下限过滤：低于 RERANK_MIN_SCORE 的文档视为与问题无关。
+        #    必须在下限过滤之后再套用"至少保留N条"，否则"最少保留3条"的规则
+        #    会把已经被判定为无关的文档又拉回来，导致拿垃圾切片硬编答案。
+        filtered_docs = [
+            doc for doc in ranked_docs
+            if doc.get("score") is None or doc.get("score") >= RERANK_MIN_SCORE
+        ]
+        if not filtered_docs:
+            logger.info(f"重排最高分低于相关性下限 {RERANK_MIN_SCORE}，判定为没有可用资料")
+            return []
+        ranked_docs = filtered_docs
 
         upper_bound = min(RERANK_MAX_TOPK, len(ranked_docs))
         lower_bound = min(RERANK_MIN_TOPK, upper_bound)

@@ -19,5 +19,7 @@ minio_config = MinIOConfig(
     access_key=os.getenv("MINIO_ACCESS_KEY"),
     secret_key=os.getenv("MINIO_SECRET_KEY"),
     bucket_name=os.getenv("MINIO_BUCKET_NAME"),
-    img_dir=os.getenv("MINIO_IMG_DIR"),
+    # 图片目录前缀：未配置时兜底为 images，
+    # 否则拼出来的对象名会变成 "None/文档名/x.jpg"，图片URL直接是坏的
+    img_dir=os.getenv("MINIO_IMG_DIR") or "images",
 )

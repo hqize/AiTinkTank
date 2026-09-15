@@ -20,6 +20,7 @@ class LLMConfig:
     api_key : str
     vl_model: str
     llm_model: str
+    item_model: str
     llm_temperature: float
     # 是否下发 enable_thinking（DashScope/Qwen3 私有参数）。
     # None=不下发（兼容标准 OpenAI 端点），True/False=显式下发
@@ -30,6 +31,10 @@ lm_config = LLMConfig(
     api_key=os.getenv("OPENAI_API_KEY"),
     vl_model=os.getenv("VL_MODEL"),
     llm_model=os.getenv("LLM_DEFAULT_MODEL"),
+    # 商品名识别专用模型；未配置时回退到默认 LLM 模型
+    # 注意：query 流程的 node_item_name_confirm 会读取该字段，
+    # 缺失会导致 AttributeError 并被吞掉，表现为"永远识别不到商品名"
+    item_model=os.getenv("ITEM_MODEL") or os.getenv("LLM_DEFAULT_MODEL"),
     llm_temperature=float(os.getenv("LLM_DEFAULT_TEMPERATURE")),
     llm_enable_thinking=_get_optional_bool("LLM_ENABLE_THINKING")
 )

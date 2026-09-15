@@ -16,6 +16,7 @@ class QueryGraphState(TypedDict):
     # 检索过程中的中间数据
     embedding_chunks: list  # 普通向量检索回来的切片
     hyde_embedding_chunks: list  # 已向量化的假设性问题切片
+    hyde_doc: str  # HyDE 生成的假设性文档（node_search_embedding_hyde 产出）
     web_search_docs: list  # 网络搜索回来的文档
 
     # 排序过程中的数据
@@ -31,3 +32,4 @@ class QueryGraphState(TypedDict):
     rewritten_query: str  # 改写后的问题
     history: list  # 历史对话记录
     is_stream: bool  # 是否流式输出
+    web_search_provider: str  # 联网搜索实现（mcp / llm / off），单次请求可覆盖默认配置

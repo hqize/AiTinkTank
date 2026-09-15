@@ -1,8 +1,9 @@
 # processor/query_processor/nodes/node_search_embedding.py
-
+from config.milvus_config import milvus_config
 from processor.query_processor.base import NodeBase
 from processor.query_processor.state import QueryGraphState
 from tool.logger import logger
+from utils.embedding_utils import generate_embeddings
 from utils.milvus_utils import get_milvus_client, hybrid_search, create_hybrid_search_requests
 
 
@@ -51,7 +52,7 @@ class NodeSearchEmbedding(NodeBase):
                  #quoted = ", ".join(f'"{v}"' for v in item_names)
                  #expr = f"item_name in [{quoted}]"
                  # 'item_name in ["BrotherHAK-180烫金机","BrotherHAK180烫金机"]'
-            	 expr = f'item_name in {item_names}'
+                 expr = f'item_name in {item_names}'
                  logger.info(f"过滤条件: {expr}")
              else:
                  logger.info("未指定商品名过滤，将全库检索")

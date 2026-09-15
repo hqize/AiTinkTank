@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from processor.import_processor.base import BaseNode, setup_logging
-from processor.import_processor.exceptions import ValidationError, StateFieldError
+from processor.import_processor.exceptions import ValidationError, StateFieldError, FileProcessingError
 from processor.import_processor.state import ImportGraphState
 
 
@@ -16,12 +16,12 @@ class NodeEntry(BaseNode):
     def process(self, state: ImportGraphState):
 
         """
-        1.  **接收状态**: 获取 `import_file_path`。
-        2.  **判断类型**: 检查文件后缀是 `.pdf` 还是 `.md`。
-        3.  **设置标记**: 更新 state 中的 `is_pdf_read_enabled/pdf_path` 或 `is_md_read_enabled/md_path`，供主图路由使用。
-        4.  **提取标题**: 从文件名中提取 `file_title`，后续作为元数据。
-        :param state:
-        :return: `is_pdf_read_enabled/pdf_path` 或 `is_md_read_enabled/md_path` 、`file_title`
+            1.  **接收状态**: 获取 `import_file_path`。
+            2.  **判断类型**: 检查文件后缀是 `.pdf` 还是 `.md`。
+            3.  **设置标记**: 更新 state 中的 `is_pdf_read_enabled/pdf_path` 或 `is_md_read_enabled/md_path`，供主图路由使用。
+            4.  **提取标题**: 从文件名中提取 `file_title`，后续作为元数据。
+            :param state:
+            :return: `is_pdf_read_enabled/pdf_path` 或 `is_md_read_enabled/md_path` 、`file_title`
         """
 
         # 1. 获取上文的文件
@@ -38,16 +38,30 @@ class NodeEntry(BaseNode):
         if not import_file_path_obj.exists():
             raise StateFieldError(node_name=self.name, field_name='import_file_path_obj', expected_type=Path)
 
-        # 5. 获取文件的后缀
-        if import_file_path_obj.suffix == '.pdf':
+        # 5. 获取文件的后缀（统一转小写，兼容 .PDF / .MD 这类大写后缀）
+        suffix = import_file_path_obj.suffix.lower()
+
+        if suffix == '.pdf':
             state['is_pdf_read_enabled'] = True
             state['pdf_path'] = import_file_path
-        elif import_file_path_obj.suffix == '.md':
+        elif suffix == '.md':
             state['is_md_read_enabled'] = True
             state['md_path'] = import_file_path
+
+            # 关键：MD 分支没有上游转换节点，而下游 node_md_img 会直接读取
+            # state["md_content"]，所以必须在这里把文件内容真正读进 state，
+            # 否则会抛 KeyError: 'md_content'。
+            try:
+                state['md_content'] = import_file_path_obj.read_text(encoding='utf-8')
+            except UnicodeDecodeError as e:
+                raise FileProcessingError(
+                    message=f"Markdown文件{import_file_path_obj.name}不是UTF-8编码，请转换编码后重新上传",
+                    node_name=self.name,
+                    cause=e
+                )
         else:
-            self.logger.error(f"该文件后缀格式{import_file_path_obj.suffix}不支持")
-            raise ValidationError(message=f"该文件的后缀格式{import_file_path_obj.suffix}不支持", node_name=self.name)
+            self.logger.error(f"该文件后缀格式{suffix}不支持")
+            raise ValidationError(message=f"该文件的后缀格式{suffix}不支持", node_name=self.name)
 
         # 6. 获取上传文件的标题，更新到state中
         state['file_title'] = import_file_path_obj.stem
