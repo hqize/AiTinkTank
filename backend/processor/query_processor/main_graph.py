@@ -9,7 +9,7 @@ from processor.query_processor.nodes.node_rerank import NodeRerank
 from processor.query_processor.nodes.node_rrf import NodeRrf
 from processor.query_processor.nodes.node_search_embedding import NodeSearchEmbedding
 from processor.query_processor.nodes.node_search_embedding_hyde import NodeSearchEmbeddingHyde
-from processor.query_processor.nodes.node_web_search_mcp import NodeWebSearchMcp
+from processor.query_processor.nodes.node_web_search import NodeWebSearch
 from processor.query_processor.state import QueryGraphState
 from tool.logger import logger
 
@@ -41,7 +41,7 @@ class KBQueryWorkflow:
         self.node_item_name_confirm = NodeItemNameConfirm()
         self.node_search_embedding = NodeSearchEmbedding()
         self.node_search_embedding_hyde = NodeSearchEmbeddingHyde()
-        self.node_web_search_mcp = NodeWebSearchMcp()
+        self.node_web_search = NodeWebSearch()
         self.node_rrf = NodeRrf()
         self.node_rerank = NodeRerank()
         self.node_answer_output = NodeAnswerOutput()
@@ -53,7 +53,7 @@ class KBQueryWorkflow:
         self.workflow.add_node("node_multi_search", lambda x: x)  # 虚拟节点：多路搜索分叉点（状态不变）
         self.workflow.add_node("node_search_embedding", self.node_search_embedding)  # 向量搜索
         self.workflow.add_node("node_search_embedding_hyde", self.node_search_embedding_hyde)  # 假设性答案向量搜索
-        self.workflow.add_node("node_web_search_mcp", self.node_web_search_mcp)  # 联网搜索
+        self.workflow.add_node("node_web_search", self.node_web_search)  # 联网搜索（mcp / 大模型自带，可切换）
         self.workflow.add_node("node_join", lambda x: {})  # 虚拟节点：多路搜索合并点
         self.workflow.add_node("node_rrf", self.node_rrf)  # 排序
         self.workflow.add_node("node_rerank", self.node_rerank)  # 重排
@@ -102,12 +102,12 @@ class KBQueryWorkflow:
         # 3. 并发执行搜索
         self.workflow.add_edge("node_multi_search", "node_search_embedding")
         self.workflow.add_edge("node_multi_search", "node_search_embedding_hyde")
-        self.workflow.add_edge("node_multi_search", "node_web_search_mcp")
+        self.workflow.add_edge("node_multi_search", "node_web_search")
 
         # 4. 多路搜索结果合并
         self.workflow.add_edge("node_search_embedding", "node_join")
         self.workflow.add_edge("node_search_embedding_hyde", "node_join")
-        self.workflow.add_edge("node_web_search_mcp", "node_join")
+        self.workflow.add_edge("node_web_search", "node_join")
 
         # 5. 合并 -> 排序 -> 重排 -> 生成 -> 结束
         self.workflow.add_edge("node_join", "node_rrf")

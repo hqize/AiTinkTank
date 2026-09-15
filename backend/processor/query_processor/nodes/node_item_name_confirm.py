@@ -18,6 +18,13 @@ from utils.embedding_utils import generate_embeddings
 from utils.milvus_utils import get_milvus_client, create_hybrid_search_requests, hybrid_search
 from utils.mongo_history_utils import get_recent_messages, save_chat_message, update_message_item_names
 
+# 商品名对齐的置信度阈值
+#   > HIGH                ：直接确认
+#   MID ~ HIGH            ：作为候选；若候选只指向唯一一个商品则直接确认，否则反问用户
+#   < MID                 ：视为没有匹配到商品
+HIGH_CONFIDENCE_SCORE: float = 0.85
+MID_CONFIDENCE_SCORE: float = 0.6
+
 
 class NodeItemNameConfirm(NodeBase):
     """
@@ -191,7 +198,13 @@ class NodeItemNameConfirm(NodeBase):
         results = []
 
         # 2、获取Milvus向量数据库的客户端连接对象
-        client = get_milvus_client()
+        # 向量库不可用时不要抛异常中断整条查询：商品名对齐拿不到结果即可，
+        # 后续会退化为「不做商品名过滤」的全库检索 + 联网搜索，尽量把问题答出来。
+        try:
+            client = get_milvus_client()
+        except Exception as e:
+            logger.warning(f"连接 Milvus 失败，跳过商品名对齐，后续走全库检索：{e}")
+            return results
 
         # 3、校验Milvus客户端连接是否成功，失败则记录错误日志并返回空结果
         if not client:
@@ -292,10 +305,10 @@ class NodeItemNameConfirm(NodeBase):
             if not matches:
                 continue
 
-            # 筛选高置信度匹配结果：评分>0.85
-            high = [m for m in matches if m.get("score", 0) > 0.85]
-            # 筛选中置信度匹配结果：评分≥0.6（仅高置信度为空时生效）
-            mid = [m for m in matches if m.get("score", 0) >= 0.6]
+            # 筛选高置信度匹配结果
+            high = [m for m in matches if (m.get("score") or 0) > HIGH_CONFIDENCE_SCORE]
+            # 筛选中置信度匹配结果（仅高置信度为空时生效）
+            mid = [m for m in matches if (m.get("score") or 0) >= MID_CONFIDENCE_SCORE]
 
             # 优化 ab 所有评分高于0.85的都可以直接确认
             if len(high) > 0:
@@ -328,8 +341,18 @@ class NodeItemNameConfirm(NodeBase):
 
             # 规则c: 无0.85分以上结果，取≥0.6分的最高前3个作为候选
             # 注：高置信度列表high为空时才会走到此处（规则a/b均不满足）
+            # 规则c-1: 中置信度候选只指向「唯一一个」商品名时，直接确认，不再反问用户。
+            # 原因：用户口语化提问（如"HAK180烫金机"）与库中规范名
+            # （如"Brother HAK 180 烫金机 D01WD7001-00"）的向量分通常落在 0.80~0.85，
+            # 若此时仍要求用户在「只有一个选项」的列表里做选择，等于永远不给答案。
+            mid_names = {m.get("item_name") for m in mid if m.get("item_name")}
+            if len(mid_names) == 1:
+                confirmed_item_names.append(mid_names.pop())
+                continue
+
+            # 规则c-2: 候选指向多个商品 → 取≥0.6分的最高前3个作为候选，让用户明确型号
             if len(mid) > 0:
-                # 取中置信度结果的前5个，加入候选列表
+                # 取中置信度结果的前3个，加入候选列表
                 for m in mid[:3]:
                     options.append(m.get("item_name"))
 
@@ -384,8 +407,13 @@ class NodeItemNameConfirm(NodeBase):
             state["item_names"] = []
             return state
 
-        # 分支C：无确认商品名，且无候选商品名（无匹配结果，需用户重新提供）
-        state["answer"] = "抱歉，未找到相关产品，请提供准确型号以便我为您查询。"
+        # 分支C：无确认商品名，且无候选商品名
+        # 注意：这里【不再】直接返回「抱歉，未找到相关产品」并短路整张图。
+        # 原因：一旦短路，后面的本地向量检索 / HyDE / 联网搜索就完全不会执行，
+        # 于是"你好""怎么保养设备""小米15怎么设置指纹"这类没有（或在库中匹配不到）
+        # 明确商品名的问题，全部被挡在第一步，系统表现得只会说"未找到相关产品"。
+        # 改为：商品名留空、answer 留空，继续往下走 —— 检索节点在 item_names 为空时
+        # 会自动退化为全库检索，联网搜索也能正常参与，最后由答案节点决定怎么回答。
         state["item_names"] = []
         return state
 

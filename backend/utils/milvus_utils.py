@@ -1,7 +1,11 @@
 # utils/milvus_utils.py
 
 import os
-from pymilvus import MilvusClient
+# AnnSearchRequest / WeightedRanker 是混合检索（稠密+稀疏）必需的类：
+# create_hybrid_search_requests 与 hybrid_search 都直接用到了它们，
+# 之前漏了这两个导入，导致任何一次向量检索都会抛 NameError 而被上层的 try 吞掉，
+# 表现为「查询永远检索不到任何资料」。
+from pymilvus import AnnSearchRequest, MilvusClient, WeightedRanker
 
 from config.milvus_config import milvus_config
 from tool.logger import logger
