@@ -30,10 +30,10 @@ appId: com.ithuq.aiThinkTank
 productName: ThinkTank
 
 # 构建资源目录 = 打包时找图标等素材的地方，应用图标就放这个目录里：
-#   build/icon.ico    Windows 应用图标 + 安装程序图标，必须 >= 256x256
+#   build/icon.ico    Windows 应用图标 + 安装程序图标，必须 >= 256x256（当前仓库里已有）
 #   build/icon.icns   macOS 图标
 #   build/icon.png    Linux 图标，建议 >= 512x512
-# 三个都缺也能出包，只是会退回 Electron 默认图标并打一条警告。
+# 缺哪个平台就退回 Electron 默认图标（日志里一条 default Electron icon is used 警告，不影响出包）。
 # NSIS 另外认 build/installerIcon.ico、build/uninstallerIcon.ico（安装/卸载程序图标），
 # 不提供就用上面那个应用图标。
 # 注意运行时的窗口图标是另一回事：src/main/index.ts 引用的 resources/icon.png。
@@ -72,9 +72,11 @@ nsis:
 
 # ---------------------------------- macOS ----------------------------------
 mac:
-  # 签名用的权限声明文件；不提供时 electron-builder 会用它自带的模板
-  entitlementsInherit: build/entitlements.mac.plist
   notarize: false   # 不做 Apple 公证（需要开发者账号，对外分发时再打开）
+  # 权限声明（entitlements）：这里不指定，electron-builder 会用它自带的默认模板。
+  # 需要额外权限时再放 build/entitlements.mac.plist，并取消下面这行的注释——
+  # 注意这个键是"显式路径"，文件不存在时 mac 签名会直接失败。
+  # entitlementsInherit: build/entitlements.mac.plist
   # 模板里的摄像头/麦克风/文档目录权限说明是为别的 App 准备的，本应用用不到，已删
 
 # ---------------------------------- Linux ----------------------------------

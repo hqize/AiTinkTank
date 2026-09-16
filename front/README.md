@@ -4,6 +4,8 @@
 两个网页（对话 / 导入）合并为单窗口双视图：**启动即进入对话页**，顶部的「📄 导入」按钮跳到导入页，
 导入页左上角的「← 返回对话」再回到问答。客户端状态统一交给 **zustand** 管理。
 
+> 项目整体架构、后端两条流水线、接口清单与前后端契约见仓库根目录的 [README.md](../README.md)。
+
 ## 快速开始
 
 包管理器统一用 pnpm（`packageManager: pnpm@10.34.5`，`package.json` 里的脚本
@@ -18,11 +20,16 @@ pnpm run dev
 # 只跑渲染层，用浏览器调 UI（没有 preload，window.electron 由 browser-fallback 兜底）
 pnpm run dev:react
 
-# 类型检查 / 代码检查 / 打包
+# 类型检查 / 代码检查
 pnpm run typecheck
 pnpm run lint
-pnpm run build          # 产物在 out/
-pnpm run build:win      # 需要 electron-builder 打包安装包
+
+# 构建（产物在 out/）
+pnpm run build
+
+# 打包安装程序（详见「打包与分发」一节）
+pnpm run build:win      # Windows 安装包 → dist/tinkTank-1.0.0-setup.exe
+pnpm run build:unpack   # 只出免安装目录 → dist/win-unpacked/（快速验证用）
 ```
 
 > pnpm 10 起 `package.json` 里的 `"pnpm"` 字段不再被读取，
@@ -96,6 +103,63 @@ src/
 > 导入服务没有 `/health`，存活探测用的是 `GET /status/__probe__`：
 > 按后端约定「未知 task_id 返回 200 且不落库」，正好可当探针。
 
+## 打包与分发
+
+```bash
+pnpm run build:win      # Windows：安装程序（NSIS）
+pnpm run build:unpack   # 只生成免安装目录，用来快速验证
+pnpm run build:mac      # 只能在 macOS 上跑
+pnpm run build:linux    # 建议在 Linux / Docker 里跑
+```
+
+产物都在 `dist/`（已 gitignore）：
+
+| 产物 | 说明 |
+| --- | --- |
+| `dist/tinkTank-1.0.0-setup.exe` | 安装程序，文件名 = `nsis.artifactName` 的 `${name}-${version}-setup`，`${name}` 取 `package.json` 的 `name` |
+| `dist/tinkTank-1.0.0-setup.exe.blockmap` | 增量更新用的块索引 |
+| `dist/win-unpacked/` | 免安装版目录，可执行文件名由 `win.executableName` 决定（当前 `thinkTank.exe`） |
+| `dist/win-unpacked/resources/app.asar` | 打包后的应用代码（`asarUnpack` 的 `resources/**` 解压在旁边的 `app.asar.unpacked/`） |
+| `dist/builder-debug.yml` | 本次生效的完整配置快照，排查打包问题时先看它 |
+
+**让用户自选安装目录**：`electron-builder.yml` 里
+
+```yaml
+nsis:
+  oneClick: false                           # 关掉一键静默安装，走交互式向导
+  allowToChangeInstallationDirectory: true  # 关键：向导里出现"选择安装目录"页
+```
+
+两个键必须同时给——NSIS 模板 `assistedInstaller.nsh` 里，目录选择页包在
+`!ifdef allowToChangeInstallationDirectory` 中，而这份模板只在 `oneClick: false` 时才会被选用。
+
+**应用图标放哪**：`build/`（由 `directories.buildResources` 指定），文件名用默认约定即可：
+
+| 文件 | 用途 | 要求 | 仓库现状 |
+| --- | --- | --- | --- |
+| `build/icon.ico` | Windows 应用 + 安装程序图标 | ≥ 256×256 | ✅ 已有 |
+| `build/icon.icns` | macOS 图标 | — | ❌ 缺失，mac 打包会用 Electron 默认图标 |
+| `build/icon.png` | Linux 图标 | 建议 ≥ 512×512 | ❌ 缺失，Linux 打包会用默认图标 |
+| `build/installerIcon.ico` / `uninstallerIcon.ico` | 可选，单独指定安装/卸载程序图标 | 不给就用应用图标 | — |
+
+缺失某个平台的图标**不会导致打包失败**，只是日志里会出现 `default Electron icon is used` 警告并退回 Electron 默认图标。
+注意运行时窗口图标是另一个文件：`resources/icon.png`（`src/main/index.ts` 用 `?asset` 引用）。
+
+macOS 的权限声明（entitlements）当前**不指定**，electron-builder 会用它自带的默认模板；
+需要额外权限时再放 `build/entitlements.mac.plist` 并打开 `mac.entitlementsInherit`——
+这个键是显式路径、不做存在性检查，文件不存在会让 mac 签名直接失败。
+
+**国内网络**：打包要向网上下两样东西，镜像已写进 `.npmrc`，用 `pnpm run build:win` 会自动生效
+（原理：`pnpm run` 会把 `.npmrc` 的键导出成 `npm_config_<键名>` 环境变量，而 electron-builder 优先读这些名字）：
+
+```ini
+electron_mirror=https://npmmirror.com/mirrors/electron/                                # Electron 运行时
+electron_builder_binaries_mirror=https://npmmirror.com/mirrors/electron-builder-binaries/  # winCodeSign / nsis
+```
+
+只有绕开 pnpm（`npx electron-builder`、直接 `node node_modules/electron-builder/cli.js`）时才需要手动设
+`ELECTRON_MIRROR` / `ELECTRON_BUILDER_BINARIES_MIRROR` 环境变量。
+
 ## 相比网页版的行为差异
 
 | 变化 | 原因 |
@@ -119,6 +183,9 @@ src/
 - 设置抽屉：地址解析为 `http://127.0.0.1:8001` / `8000`，运行环境版本正常
 - 清空对话：两步确认后只剩欢迎语
 - `pnpm run dev:react`（浏览器模式）：`browser-fallback` 生效、跨端口接口调用正常
+- 打包：`pnpm run build:win` 完整跑通，产出 `dist/tinkTank-1.0.0-setup.exe`；
+  解包校验 `app.asar` 内含 `out/**`、`node_modules/@electron-toolkit/*`、`zustand`，
+  且 `src/`、配置文件已排除（main 进程是运行时 `require` 这些依赖的，所以 `files` 不能改成只写 `out/**` 的白名单）
 
 ## 说明
 
@@ -128,5 +195,10 @@ src/
 - 开发模式下 Electron 会打印 *Insecure Content-Security-Policy* 警告（打包后不再出现）。
   当前没有设置 CSP，是因为 Vite 的 HMR 需要内联脚本，而参考图片来自任意 http(s) 地址；
   如需收紧，建议在打包环境由主进程通过响应头下发，而不是写进 `index.html`。
-- `electron-builder.yml` / `package.json` 里的 `productName`、`appId` 仍是模板占位值，
-  正式出安装包前记得改成自己的名称。
+- **命名现状**：`appId: com.ithuq.aiThinkTank`、`productName: ThinkTank`、`win.executableName: thinkTank`，
+  而 `package.json` 的 `name` 是 `tinkTank`（安装包文件名取自它）。三处大小写不一致，
+  想统一的话把 `nsis.artifactName` 里的 `${name}` 换成 `${productName}`，或把三处写成同一套。
+- **`pnpm run dev` 报 `Cannot read properties of undefined (reading 'isPackaged')`**：
+  这是环境里被注入了 `ELECTRON_RUN_AS_NODE`（Electron 会退化成纯 Node 运行，
+  `require('electron').app` 因此不存在）。`scripts/run.mjs` 已尝试清除该变量，
+  若仍复现，直接在启动前清掉：`Remove-Item Env:ELECTRON_RUN_AS_NODE`（PowerShell）。
