@@ -1,0 +1,10 @@
+# pnpm 10 起，package.json 里的 "pnpm" 字段不再被读取，
+# onlyBuiltDependencies 这类设置统一挪到这里（单包项目同样适用，
+# 不需要声明 packages，本文件此时只是一份 pnpm 配置）。
+#
+# 允许执行安装脚本的依赖：pnpm 10 默认拦截所有依赖的构建脚本，
+# electron / esbuild 需要跑各自的安装脚本才能拿到可执行文件。
+onlyBuiltDependencies:
+  - electron
+  - electron-winstaller
+  - esbuild
