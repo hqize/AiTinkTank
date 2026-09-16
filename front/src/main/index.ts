@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -6,10 +6,16 @@ import icon from '../../resources/icon.png?asset'
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    // 比模板默认值大一圈：左侧导航 + 980px 的对话卡片才放得下
+    width: 1200,
+    height: 860,
+    minWidth: 960,
+    minHeight: 640,
     show: false,
     autoHideMenuBar: true,
+    // 与渲染层 --bg 保持一致，避免加载瞬间白屏闪烁
+    backgroundColor: '#f3f5f7',
+    title: 'RAG智库客服',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -21,8 +27,12 @@ function createWindow(): void {
     mainWindow.show()
   })
 
+  // 答案里的参考图片链接是 target=_blank：一律交给系统浏览器打开，
+  // 不在应用内新建窗口（只放行 http/https，避免 file: 等协议被外部程序接管）。
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    if (/^https?:\/\//i.test(details.url)) {
+      void shell.openExternal(details.url)
+    }
     return { action: 'deny' }
   })
 
@@ -48,9 +58,6 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
 

@@ -1,35 +1,13 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+/**
+ * 渲染层入口组件。
+ *
+ * 网页版是两个独立 HTML（chat.html / import.html），
+ * 桌面端合并成单窗口双视图，外壳见 components/AppShell.tsx。
+ */
+import AppShell from './components/AppShell'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
-  return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
-  )
+  return <AppShell />
 }
 
 export default App

@@ -1,40 +1,91 @@
-appId: com.yourname.yourapp
-productName: your-app-name
+# =============================================================================
+# electron-builder 打包配置
+#
+# 产物目录：./dist/
+# 常用命令：
+#   pnpm run build:win     生成 Windows 安装程序 setup.exe（在 Windows 上跑）
+#   pnpm run build:mac     生成 .dmg（只能在 macOS 上跑）
+#   pnpm run build:linux   生成 AppImage / deb（建议在 Linux 或 Docker 里跑）
+#   pnpm run build:unpack  只生成免安装的 dist/win-unpacked/，用来快速验证
+#
+# 这些脚本里已经带了一次 pnpm run build，所以不用手动先构建。
+#
+# 国内网络注意：打包过程要向网上下两样东西，GitHub 连不上就得走镜像。
+# 两个镜像都写在 .npmrc 里（已经配好），用 pnpm run build:win 会自动生效：
+#   electron_mirror                    → 拉 Electron 运行时
+#   electron_builder_binaries_mirror   → 拉 winCodeSign / nsis 等打包辅助工具
+# 原理：pnpm run 会把 .npmrc 的键导出成 npm_config_<键名> 环境变量，而
+# electron-builder 优先读的正是 npm_config_electron_mirror /
+# npm_config_electron_builder_binaries_mirror（实测两者都生效，无需再设环境变量）。
+# 只有绕开 pnpm、直接用 node 调 electron-builder/cli.js 时，才需要手动设
+# ELECTRON_MIRROR 和 ELECTRON_BUILDER_BINARIES_MIRROR。
+# =============================================================================
+
+# 应用标识。
+# appId：系统登记应用、升级识别用的唯一 ID，发布之后不要再改。
+# productName：安装后显示的软件名 —— 开始菜单、桌面快捷方式、卸载面板都用它，
+#              同时也是 %APPDATA% 下的用户数据目录名。
+# 窗口标题不在这里配，见 src/main/index.ts 的 title 和 src/renderer/index.html。
+appId: com.ithuq.aiThinkTank
+productName: ThinkTank
+
+# 构建资源目录 = 打包时找图标等素材的地方，应用图标就放这个目录里：
+#   build/icon.ico    Windows 应用图标 + 安装程序图标，必须 >= 256x256
+#   build/icon.icns   macOS 图标
+#   build/icon.png    Linux 图标，建议 >= 512x512
+# 三个都缺也能出包，只是会退回 Electron 默认图标并打一条警告。
+# NSIS 另外认 build/installerIcon.ico、build/uninstallerIcon.ico（安装/卸载程序图标），
+# 不提供就用上面那个应用图标。
+# 注意运行时的窗口图标是另一回事：src/main/index.ts 引用的 resources/icon.png。
 directories:
   buildResources: build
+
+# 打进 app 的文件。这里是「排除式」：默认全包含，再把源码/配置/开发文件排掉。
+# 源码里 require 的运行时依赖（@electron-toolkit/* 等）由 electron-builder 自动从
+# node_modules 收集，所以别把它改成只写 out/** 的白名单，否则装出来的应用起不来。
 files:
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!electron-builder.yml'
   - '!{.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,pnpm-workspace.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+
+# 需要解压到 asar 之外、运行时按真实路径读取的资源
+# （对应 src/main/index.ts 的 import icon from '../../resources/icon.png?asset'）
 asarUnpack:
   - resources/**
+
+# --------------------------------- Windows ---------------------------------
 win:
-  executableName: your-app-name
+  # dist/win-unpacked/ 里的可执行文件名，保持 ASCII，避免中文路径带来的麻烦
+  executableName: thinkTank
+
+# NSIS = 生成 setup.exe 的安装程序
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+  oneClick: false                           # 关掉一键静默安装，改成交互式向导
+  allowToChangeInstallationDirectory: true  # 关键：向导里多一页让用户自选安装目录
+  createDesktopShortcut: always             # 直接创建桌面快捷方式，不再多问一次
+  artifactName: ${name}-${version}-setup.${ext}   # ${name} 取 package.json 的 name
+  # shortcutName / uninstallDisplayName 不必写，默认就等于 productName
+
+# ---------------------------------- macOS ----------------------------------
 mac:
+  # 签名用的权限声明文件；不提供时 electron-builder 会用它自带的模板
   entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
+  notarize: false   # 不做 Apple 公证（需要开发者账号，对外分发时再打开）
+  # 模板里的摄像头/麦克风/文档目录权限说明是为别的 App 准备的，本应用用不到，已删
+
+# ---------------------------------- Linux ----------------------------------
 linux:
   target:
     - AppImage
-    - snap
     - deb
-  maintainer: your-name
+    - snap   # snap 需要本机装 snapcraft，没装就删掉这一行
+  maintainer: sulong
   category: Utility
-appImage:
-  artifactName: ${name}-${version}.${ext}
+  # 各平台的 artifactName 用的是 electron-builder 默认值，不再重复声明
+
+# 本项目没有原生模块，跳过 node-gyp 重新编译，打包更快
 npmRebuild: false
